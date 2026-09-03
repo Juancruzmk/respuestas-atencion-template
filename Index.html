@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestor de Respuestas Rápidas</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --sidebar-bg: #ffffff;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --active-item: #e0f2fe;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+
+    /* Sidebar */
+    .sidebar { width: 320px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .sidebar-header { padding: 1.25rem; border-bottom: 1px solid var(--border); font-size: 1.1rem; font-weight: 700; color: var(--primary); }
+    .nav-list { list-style: none; overflow-y: auto; flex: 1; padding: 1rem 0; }
+  .nav-category { 
+      font-size: 0.75rem; 
+      font-weight: 700; 
+      text-transform: uppercase; 
+      color: var(--text-muted); 
+      padding: 0.75rem 1.25rem; 
+      letter-spacing: 0.05em; 
+      cursor: pointer; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      user-select: none;
+      transition: background 0.15s, color 0.15s;
+    }
+    .nav-category:hover { 
+      background: #f1f5f9; 
+      color: var(--primary); 
+    }
+    .nav-category .arrow { 
+      font-size: 0.7rem; 
+      transition: transform 0.2s ease; 
+    }
+    .nav-category.collapsed .arrow { 
+      transform: rotate(-90deg); 
+    }
+    .category-items { 
+      list-style: none; 
+      overflow: hidden; 
+    }
+    .category-items.hidden { 
+      display: none; 
+    }
+    .nav-item { 
+      padding: 0.6rem 1.25rem 0.6rem 1.75rem; 
+      cursor: pointer; 
+      font-size: 0.9rem; 
+      border-left: 3px solid transparent; 
+      transition: background 0.15s; 
+    }
+    .nav-item:hover { background: #f1f5f9; }
+    .nav-item.active { 
+      background: var(--active-item); 
+      border-left-color: var(--primary); 
+      font-weight: 600; 
+      color: var(--primary); 
+    }
+
+    /* Contenido Principal */
+    .main-content { flex: 1; overflow-y: auto; padding: 2rem; display: flex; justify-content: center; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; width: 100%; max-width: 800px; padding: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); height: fit-content; margin-bottom: 2rem; }
+    .card h2 { margin-bottom: 0.25rem; font-size: 1.5rem; }
+    .subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+
+    /* Formularios */
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; font-weight: 600; margin-bottom: 0.35rem; font-size: 0.85rem; }
+    input, select, textarea { width: 100%; padding: 0.55rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; font-family: inherit; }
+    input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+    input[readonly] { background-color: #f1f5f9; cursor: not-allowed; color: #475569; }
+    textarea { height: 250px; resize: vertical; margin-top: 0.5rem; line-height: 1.45; }
+
+    /* Campos Repetibles */
+    .repeatable-box { border: 1px dashed #cbd5e1; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #fdfdfd; }
+    .repeatable-item { display: flex; gap: 0.5rem; align-items: flex-end; margin-bottom: 0.75rem; }
+    .repeatable-item:last-child { margin-bottom: 0; }
+    .col-prod { flex: 2; }
+    .col-val { flex: 1; }
+    .btn-del { background: #ef4444; color: white; border: none; padding: 0.55rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+    .btn-del:hover { background: #dc2626; }
+    .btn-add { background: #f1f5f9; color: var(--primary); border: 1px solid var(--primary); padding: 0.45rem 0.8rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; margin-top: 0.5rem; display: inline-block; }
+    .btn-add:hover { background: #e0f2fe; }
+
+    /* Botones de acción */
+    .btn-copy { margin-top: 0.75rem; width: 100%; background: var(--primary); color: #fff; border: none; padding: 0.75rem; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .btn-copy:hover { background: var(--primary-hover); }
+    .status { margin-top: 0.5rem; font-size: 0.85rem; color: #16a34a; font-weight: 500; display: none; text-align: center; }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="sidebar-header">Plantillas de Respuesta</div>
+    <ul class="nav-list" id="nav-list"></ul>
+  </aside>
+
+  <main class="main-content">
+    <div class="card">
+      <h2 id="t-title">Cargando...</h2>
+      <p class="subtitle">Modifica los campos para actualizar la plantilla:</p>
+
+      <div id="dynamic-inputs"></div>
+
+      <div class="form-group" style="margin-top: 1.5rem;">
+        <label for="preview">Mensaje listo para enviar:</label>
+        <textarea id="preview"></textarea>
+      </div>
+
+      <button class="btn-copy" onclick="copyText()">Copiar al portapapeles</button>
+      <div id="status" class="status">✓ ¡Copiado con éxito!</div>
+    </div>
+  </main>
+
+  <script>
+    // Formatea números con puntos de miles (ej: 15000 -> "15.000")
+    function formatNumber(num) {
+      if (isNaN(num) || num === null || num === '') return '0';
+      return Number(num).toLocaleString('es-AR');
+    }
+
+    const templatesData = [
+      // SECCIÓN 1
+      {
+        id: "pedido-fotos",
+        category: "1. Solicitud de Información y Evidencia",
+        title: "Pedido de Fotos / Video",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "Marcelo" },
+          { id: "gestion", label: "Tipo de gestión", type: "select", options: ["Cambio", "Devolución", "Garantía"] },
+          { id: "detalle", label: "Detalle a revisar", type: "select", options: ["el estado del producto", "la falla que nos comentas"] }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}!
+
+Para poder avanzar con tu gestión de ${vals.gestion}, te pedimos si nos puedes adjuntar algunas fotos o un breve video donde se aprecie ${vals.detalle}. Lo ideal es ver el frente, la parte trasera y ambos laterales. Si lo tienes en caja, puedes enviarnos una foto por fuera y otra con la tapa abierta.
+
+Si no puedes adjuntarlo por acá, envíalo a nuestro WhatsApp indicando por este medio desde qué número nos escribes (puedes ignorar la respuesta automática del bot).
+
+Si te resulta más ágil, puedes acercarte con el producto a tu tienda Carestino más cercana para que el equipo lo revise en el momento. 
+
+¡Aguardamos tu respuesta!`
+      },
+      {
+        id: "datos-faltantes",
+        category: "1. Solicitud de Información y Evidencia",
+        title: "Solicitud de Datos Faltantes",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" },
+          { 
+            id: "tipoDoc", 
+            label: "Tipo de identificación", 
+            type: "select", 
+            options: [
+              { value: "DNI", label: "DNI (Argentina, Perú, Chile, Panamá, Paraguay)" },
+              { value: "Cédula", label: "Cédula (Ecuador, Uruguay, Colombia)" },
+              { value: "INE", label: "INE (México)" }
+            ] 
+          },
+          { 
+            id: "region", 
+            label: "División territorial", 
+            type: "select", 
+            options: [
+              { value: "Provincia", label: "Provincia" },
+              { value: "Departamento", label: "Departamento" }
+            ] 
+          }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}! 
+
+Para poder cargar tu gestión correctamente, necesitamos que nos envies estos datos actualizados:
+Nombre completo:
+${vals.tipoDoc}:
+Celular:
+Mail:
+Dirección completa:
+Entrecalles:
+Localidad: 
+${vals.region}:
+Código Postal: 
+Link ubicación GPS:
+	¡Gracias!`
+      },
+      {
+        id: "datos-facturacion",
+        category: "1. Solicitud de Información y Evidencia",
+        title: "Comprobante de Compra",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" },
+          { id: "canal", label: "Canal de compra", type: "select", options: ["Página Web", "Mercado Libre", "Tienda Física"] }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}!
+
+Para poder localizar tu operación en el sistema, ¿podrías indicarnos el número de factura o adjuntar el comprobante de tu compra realizada por ${vals.canal}?
+
+¡Muchas gracias!`
+      },
+
+      // SECCIÓN 2
+      {
+        id: "aprobacion-garantia",
+        category: "2. Aprobación y Resolución (Garantías, Cambios y Devoluciones)",
+        title: "Aprobación de Garantía y Opciones",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" },
+          { 
+            id: "gestion", 
+            label: "Tipo de gestión aprobada", 
+            type: "select", 
+            options: ["Garantía", "Devolución", "Cambio"] 
+          }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}! 
+
+Muchas gracias por enviarnos las imágenes. Las revisamos y te informamos que se aprobó la gestión de ${vals.gestion}.
+
+Para avanzar, podés acercarte a tu tienda Carestino más cercana, o bien lo gestionamos con envío a tu domicilio (retiramos la parte defectuosa y te entregamos la nueva). Contanos qué opción te resulta más cómoda.`
+      },
+   {
+        id: "cotizacion-cambio",
+        category: "2. Aprobación y Resolución (Garantías, Cambios y Devoluciones)",
+        title: "Cotización y Gestión de Cambio",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" },
+          { 
+            id: "moneda", 
+            label: "Moneda de cobro", 
+            type: "select", 
+            options: [
+              { value: "$", label: "$ (Pesos)" },
+              { value: "₲", label: "₲ (Guaraníes)" },
+              { value: "S/.", label: "S/. (Soles)" }
+            ] 
+          },
+          { id: "prodOriginal", label: "Producto que tiene", type: "text", default: "" },
+          { id: "valOriginal", label: "Valor producto que tiene", type: "number", default: "0" },
+          { 
+            id: "productosNuevos", 
+            label: "Productos que desea", 
+            type: "repeatable",
+            default: [{ prod: "", val: "0" }]
+          },
+          { id: "valEnvio", label: "Costo de envío", type: "number", default: "0" },
+          { id: "valTotalCambio", label: "Total cambio (Cálculo automático)", type: "readonly", default: "0" },
+          { id: "valDiferencia", label: "Diferencia final (Cálculo automático)", type: "readonly", default: "0" },
+          { id: "linkPago", label: "Link de pago (solo si debe abonar)", type: "text", default: "" },
+          { 
+            id: "metodoRetiro", 
+            label: "Método de entrega / retiro", 
+            type: "select", 
+            options: [
+              "que despaches el producto en una agencia cercana",
+              "retirar el producto en tu domicilio"
+            ] 
+          }
+        ],
+        template: (vals) => {
+          const listaNuevos = (vals.productosNuevos || []).map(p => 
+            `${p.prod || '[Producto nuevo]'}: ${vals.moneda} ${formatNumber(p.val)}`
+          ).join('\n');
+
+          // Lógica condicional según el saldo
+          let textoDiferencia = "";
+          let conectorEnvio = "Una vez saldado, solicitaremos";
+          const dif = vals.rawDiferencia;
+
+          if (dif > 0) {
+            textoDiferencia = `Esto deja una diferencia a abonar de ${vals.moneda} ${formatNumber(dif)}. Te enviamos el link de pago para saldarla: ${vals.linkPago || '[Link de pago]'}.\n\n`;
+            conectorEnvio = "Una vez saldado, solicitaremos";
+          } else if (dif < 0) {
+            const saldoAFavor = Math.abs(dif);
+            textoDiferencia = `Esto deja una diferencia a tu favor de ${vals.moneda} ${formatNumber(saldoAFavor)}. Te enviaremos una Giftcard por el saldo restante para que puedas utilizar en próximas compras, tanto en nuestra web como en tiendas oficiales.\n\n`;
+            conectorEnvio = "Solicitaremos";
+          } else {
+            // Si es 0 queda en blanco y no exige saldar
+            textoDiferencia = "";
+            conectorEnvio = "Solicitaremos";
+          }
+
+          return `¡Hola, ${vals.nombre || '[Nombre]'}! 
+
+Es posible gestionar el cambio mientras el producto no tenga uso, te pedimos si nos puedes adjuntar algunas fotos. Lo ideal es ver el frente, la parte trasera y ambos laterales. Si lo tienes en caja, puedes enviarnos una foto por fuera y otra con la tapa abierta.
+
+Te compartimos el detalle para gestionar tu cambio:
+
+Cuentas con: 
+${vals.prodOriginal || '[Producto original]'}: ${vals.moneda} ${formatNumber(vals.valOriginal)}
+
+Deseas: 
+${listaNuevos}
+Costo de envío: ${vals.moneda} ${formatNumber(vals.valEnvio)}
+Total cambio: ${vals.moneda} ${formatNumber(vals.rawTotalCambio)}
+
+${textoDiferencia}${conectorEnvio} las etiquetas para ${vals.metodoRetiro}. Cuando regrese a nuestro depósito (demora de 2 a 10 días hábiles), te enviaremos el nuevo. 
+
+¡Aguardamos tu confirmación!`;
+        }
+      },
+// SECCIÓN 3
+      {
+        id: "logistica-propia",
+        category: "3. Logística, Retiros y Envíos",
+        title: "Coordinación de Logística Propia (Camioneta)",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" },
+          { 
+            id: "tipoGestion", 
+            label: "Tipo de gestión", 
+            type: "select", 
+            options: ["Cambio", "Devolución", "Garantía"] 
+          },
+          { id: "fecha", label: "Fecha de visita", type: "text", placeholder: "Ej. Jueves 10/09" },
+          { 
+            id: "franjaHoraria", 
+            label: "Franja horaria", 
+            type: "select", 
+            options: ["8 y las 18 hs", "9 y las 21 hs"] 
+          },
+          { id: "orden", label: "Número de orden", type: "text", default: "" },
+          { 
+            id: "modoLogistica", 
+            label: "Acción logística a realizar", 
+            type: "select", 
+            options: [
+              { value: "entrega", label: "Solo Entrega" },
+              { value: "cambio", label: "Cambio mano a mano" },
+              { value: "retiro", label: "Solo Retiro" }
+            ] 
+          },
+          { 
+            id: "itemDetalle", 
+            label: "Producto o Repuesto (para Entrega o Mano a Mano)", 
+            type: "text", 
+            placeholder: "Ej. Cochecito Beverly / Rueda delantera" 
+          },
+          { 
+            id: "rolTercero", 
+            label: "Acción de quien atiende", 
+            type: "select", 
+            options: ["recibirlo", "entregarlo"] 
+          },
+          { 
+            id: "cierre", 
+            label: "Saludo de cierre", 
+            type: "select", 
+            options: [
+              "¡Estamos en contacto!",
+              "Esperamos haberte ayudado. Quedamos a disposición. ¡Gracias por contactarte!"
+            ] 
+          }
+        ],
+        template: (vals) => {
+          let bloqueAccion = "";
+          const item = vals.itemDetalle || '[Producto/Repuesto]';
+
+          if (vals.modoLogistica === "entrega") {
+            bloqueAccion = `Te estaremos entregando un nuevo ${item}.`;
+          } else if (vals.modoLogistica === "cambio") {
+            bloqueAccion = `Haremos el retiro de ${item} y te entregaremos el nuevo. Te pedimos tenerlo listo y embalado.`;
+          } else if (vals.modoLogistica === "retiro") {
+            bloqueAccion = `Pasaremos a retirar el producto. Te pedimos que lo tengas en su caja listo para entregar. Una vez retirado, gestionaremos la devolución del pago.`;
+          }
+
+          return `¡Hola, ${vals.nombre || '[Nombre]'}! 
+
+Muchas gracias por enviarnos las imágenes. Las revisamos y te informamos que se aprobó la gestión de ${vals.tipoGestion}.
+
+Te confirmamos que el día ${vals.fecha || '[Fecha]'}, entre las ${vals.franjaHoraria}, pasaremos por tu domicilio bajo el nro de orden #${vals.orden || '[Número]'}. 
+
+${bloqueAccion}
+
+Recuerda que puede ${vals.rolTercero} cualquier persona mayor de edad.
+
+${vals.cierre}`;
+        }
+      },
+
+      {
+        id: "despacho-transporte",
+        category: "3. Logística, Retiros y Envíos",
+        title: "Despacho al Interior / Transporte",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" },
+          { 
+            id: "tipoGestion", 
+            label: "Tipo de gestión", 
+            type: "select", 
+            options: ["Cambio", "Devolución", "Garantía"] 
+          },
+          { id: "fecha", label: "Fecha de despacho", type: "text", placeholder: "Ej. 10/09 o lunes próximo" },
+          { id: "itemDetalle", label: "Producto o Repuesto a despachar", type: "text", placeholder: "Ej. Cochecito Beverly / Rueda delantera" },
+          { id: "orden", label: "Número de orden", type: "text", default: "" },
+          { 
+            id: "plazoEntrega", 
+            label: "Plazo de entrega (días hábiles)", 
+            type: "select", 
+            options: ["2 a 10", "2 a 3", "2 a 8"] 
+          }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}! 
+
+Muchas gracias por enviarnos las imágenes. Las revisamos y te informamos que se aprobó la gestión de ${vals.tipoGestion}.
+
+Te confirmamos que el ${vals.fecha || '[Fecha]'} despacharemos ${vals.itemDetalle || '[Producto/Repuesto]'} bajo el número de orden #${vals.orden || '[Número]'}. 
+
+Vas a poder seguir el estado del envío desde el portal de nuestra web. El plazo de entrega es de ${vals.plazoEntrega} días hábiles. ¡Esperamos que llegue pronto!
+
+Quedamos a disposición. ¡Gracias por contactarte!`
+      },
+      {
+        id: "devolucion-costo-envio",
+        category: "3. Logística, Retiros y Envíos",
+        title: "Devolución con Costo de Envío",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" },
+          { 
+            id: "moneda", 
+            label: "Moneda", 
+            type: "select", 
+            options: [
+              { value: "$", label: "$ (Pesos)" },
+              { value: "₲", label: "₲ (Guaraníes)" },
+              { value: "S/.", label: "S/. (Soles)" }
+            ] 
+          },
+          { id: "montoEnvio", label: "Monto total del envío", type: "number", default: "0" },
+          { id: "linkPago", label: "Link de pago", type: "text", default: "" },
+          { 
+            id: "zona", 
+            label: "Zona de gestión", 
+            type: "select", 
+            options: [
+              { value: "interior", label: "Interior" },
+              { value: "amba", label: "AMBA" }
+            ] 
+          },
+          { 
+            id: "metodoInterior", 
+            label: "Método de envío (Solo si es Interior)", 
+            type: "select", 
+            options: [
+              "que despaches el producto en una agencia cercana",
+              "retirar el producto en tu domicilio"
+            ] 
+          }
+        ],
+        template: (vals) => {
+          let bloqueLogistica = "";
+
+          if (vals.zona === "interior") {
+            bloqueLogistica = `Una vez saldado, solicitaremos las etiquetas para ${vals.metodoInterior}. Cuando regrese a nuestro depósito (demora de 2 a 10 días hábiles), gestionaremos el reintegro del pago.`;
+          } else {
+            bloqueLogistica = `Una vez saldado, solicitaremos el retiro del producto, cuando regrese a nuestro depósito, gestionaremos el reintegro del pago.`;
+          }
+
+          return `¡Hola, ${vals.nombre || '[Nombre]'}! 
+Muchas gracias por enviarnos las imágenes. Las revisamos y te informamos que se aprobó la gestión de Devolución.
+
+Tiene un costo de envío de ${vals.moneda} ${formatNumber(vals.montoEnvio)}. Te enviamos el link de pago para saldarla: ${vals.linkPago || '[Link de pago]'}.
+
+${bloqueLogistica}
+
+¡Aguardamos tu confirmación!`;
+        }
+      },
+      {
+        id: "devolucion-transito",
+        category: "3. Logística, Retiros y Envíos",
+        title: "Devolución en Tránsito",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" },
+          { id: "fechaDespacho", label: "Fecha de despacho", type: "text", placeholder: "Ej. 02/09" },
+          { 
+            id: "moneda", 
+            label: "Moneda", 
+            type: "select", 
+            options: [
+              { value: "$", label: "$ (Pesos)" },
+              { value: "₲", label: "₲ (Guaraníes)" },
+              { value: "S/.", label: "S/. (Soles)" }
+            ] 
+          },
+          { id: "montoCosto", label: "Costo de envío por devolución", type: "number", default: "0" }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}!
+
+Observamos que tu pedido fue despachado el ${vals.fechaDespacho || '[Fecha]'}. Solicitaremos al transporte el retorno. Sin embargo en muchas ocasiones no llegan a frenarlo a tiempo, por lo cual sugerimos que rechacen en caso de intento de entrega, ya que el costo de envío de la devolución es de ${vals.moneda} ${formatNumber(vals.montoCosto)}.
+
+Tan pronto tengamos confirmación del retorno, gestionaremos la devolución del pago.
+
+¡Estamos en contacto!`
+      },
+      {
+        id: "envio-etiquetas",
+        category: "3. Logística, Retiros y Envíos",
+        title: "Envío de Etiquetas",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" },
+          { 
+            id: "tipoGestion", 
+            label: "Tipo de gestión", 
+            type: "select", 
+            options: ["Cambio", "Garantía"] 
+          },
+          { 
+            id: "metodoEntrega", 
+            label: "Método de entrega para las etiquetas", 
+            type: "select", 
+            options: [
+              "que despaches el producto en una agencia cercana",
+              "retirar el producto en tu domicilio"
+            ] 
+          },
+          { 
+            id: "estadoRetorno", 
+            label: "Condición de retorno", 
+            type: "select", 
+            options: ["retirado", "despachado"] 
+          },
+          { 
+            id: "accionNuevoEnvio", 
+            label: "Acción para el nuevo envío", 
+            type: "select", 
+            options: [
+              "enviaremos el nuevo producto",
+              "aguardaremos que llegue a nuestro depósito (demora de 2 a 10 días hábiles), para gestionar el envío del nuevo producto"
+            ] 
+          }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}! 
+
+Muchas gracias por enviarnos las imágenes. Las revisamos y te informamos que se aprobó la gestión de ${vals.tipoGestion}.
+
+Te confirmamos que ya solicitamos el retorno de tu producto. En breve nos estarán facilitando las etiquetas de logística para ${vals.metodoEntrega}; en cuanto las tengamos te las enviamos por acá para que las pegues en la caja. 
+
+Una vez sea ${vals.estadoRetorno}, ${vals.accionNuevoEnvio}.
+
+¡Estamos en contacto!`
+      },
+      {
+        id: "envio-incompleto",
+        category: "3. Logística, Retiros y Envíos",
+        title: "Aclaración por Envío Incompleto",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" }
+        ],
+        template: (vals) => `¡Hola ${vals.nombre || '[Nombre]'}! 
+
+No te preocupes, es normal que a veces los pedidos se dividan en distintos paquetes con diferentes guías de envío. 
+
+¿Nos confirmarías si ya terminaste de recibir todo? Si te sigue faltando algo, lo revisamos enseguida con el equipo de logística.`
+      },
+
+      // SECCIÓN 4
+      {
+        id: "factura-enviada",
+        category: "4. Cierres, Facturación y Administrativos",
+        title: "Factura Enviada",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}!
+
+Te avisamos que ya enviamos la factura al correo que nos indicaste. Además, te la dejamos adjunta en este mensaje. 
+
+Esperamos haberte ayudado. Quedamos a disposición. ¡Gracias por contactarte!`
+      },
+      {
+        id: "error-factura",
+        category: "4. Cierres, Facturación y Administrativos",
+        title: "Error Factura",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}!
+
+Hubo un inconveniente con la generación de la factura automática, pero no te preocupes que ya solicitamos sea corregida.
+
+Tan pronto la tengamos te la enviaremos por este medio y al mail registrado.
+
+¡Quedamos en contacto!`
+      },
+      {
+        id: "devolucion-dinero-procesada",
+        category: "4. Cierres, Facturación y Administrativos",
+        title: "Devolución de Dinero Procesada",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}! 
+
+Te confirmamos que la devolución de tu dinero ya fue procesada. La vas a ver reflejada a través del mismo medio de pago que utilizaste para la compra. Te adjuntamos el comprobante.
+
+Esperamos haberte ayudado. Quedamos a disposición. ¡Gracias por contactarte!`
+      },
+      {
+        id: "cupon-compensacion",
+        category: "4. Cierres, Facturación y Administrativos",
+        title: "Cupón de Compensación (Postventa)",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" },
+          { id: "motivo", label: "Motivo del inconveniente", type: "text", placeholder: "Ej. la demora en la entrega / el detalle de pintura" },
+          { id: "codigoCupon", label: "Código de cupón", type: "text", placeholder: "Ej. CARE15OFF" },
+          { 
+            id: "porcentaje", 
+            label: "Porcentaje de descuento", 
+            type: "select", 
+            options: ["5", "10", "15", "20", "30"] 
+          }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}!
+
+Queremos agradecerte por contarnos tu experiencia, ya que nos ayuda a seguir mejorando. A modo de disculpas por los inconvenientes relacionados con ${vals.motivo || '[Motivo]'}, te acercamos este cupón de descuento ${vals.codigoCupon || '[código]'} por %${vals.porcentaje}. Esperamos que te sea de mucha utilidad en tu próxima compra.
+
+Quedamos a disposición. ¡Gracias por elegirnos!`
+      },
+
+      {
+        id: "cierre-reclamo-duplicado",
+        category: "4. Cierres, Facturación y Administrativos",
+        title: "Cierre por Reclamo Duplicado",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" },
+          { id: "numeroReclamo", label: "Número de reclamo principal", type: "text", placeholder: "Ej. 12345" }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}! 
+
+Notamos que tenés otro reclamo abierto por este mismo tema. Para evitar gestiones cruzadas y organizarnos mejor, vamos a cerrar este y seguimos la conversación directamente en el reclamo #${vals.numeroReclamo || '[Número]'}. 
+
+¡Gracias!`
+      },
+
+      {
+        id: "cierre-falta-respuesta",
+        category: "4. Cierres, Facturación y Administrativos",
+        title: "Cierre por Falta de Respuesta",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}! 
+
+Como no tuvimos más novedades de tu parte, damos por cerrado este reclamo. Si necesitás continuar con la gestión, no te preocupes: podés abrir uno nuevo o acercarte a tu sucursal más cercana. 
+
+¡Estamos a disposición!`
+      },
+
+      // SECCIÓN 5
+      {
+        id: "aclaracion-practicuna",
+        category: "5. FAQ",
+        title: "Aclaración Técnica (Armado Practicuna)",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}! 
+
+Observamos que se trata de un inconveniente con el armado.
+Para poder solucionar el inconveniente, debes seguir los siguientes pasos en el mismo orden. 
+
+1 - Asegurate de tener la cuna totalmente desarmada y con la base levantada
+2 - Armar laterales cortos
+3 - Armar laterales largos
+4 - Por último, presiona el centro de la cuna para bajar la base
+
+Si la base se baja sin haber trabado primero los laterales cortos y los largos, los laterales no quedarán armados correctamente.
+
+Te comparto un video de referencia donde lo puedes ver paso a paso:
+https://youtu.be/Jx1AuhQuoB4?si=gm6YV9EOrX3c6o71&t=26
+
+Quedamos a disposición por cualquier otra duda. ¡Gracias por contactarte!`
+      },
+
+      {
+        id: "aclaracion-huevito-ferro",
+        category: "5. FAQ",
+        title: "Aclaración Técnica (Huevito Ferro)",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}! 
+
+Observamos que se trata de un inconveniente con los encastres. Para retirar el huevíto, debes presionarlo hacia abajo y apretar el gatillo de liberación trasera del huevito, por último retira el huevito para arriba. 
+
+Te comparto un video de referencia donde puedes verlo: https://www.youtube.com/shorts/Uxacj6jADxI 
+
+Quedamos a disposición por cualquier otra duda. ¡Gracias por contactarte!`
+      },
+
+      {
+        id: "aclaracion-cuna-siena",
+        category: "5. FAQ",
+        title: "Aclaración Técnica (Ej. Cuna Siena)",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}! 
+
+Te pedimos disculpas si hubo alguna confusión. Te contamos que el modelo Practicuna Colecho Siena no incluye barras mecedoras. 
+
+Por un error de impresión, esa parte figura en el manual, pero no viene incluida (por eso tampoco se menciona en la web). 
+
+Quedamos a disposición por cualquier otra duda. ¡Gracias por contactarte!`
+      },
+
+      {
+        id: "aclaracion-manillar-triciclo",
+        category: "5. FAQ",
+        title: "Aclaración Técnica (Manillar Triciclo)",
+        inputs: [
+          { id: "nombre", label: "Nombre del cliente", type: "text", default: "" }
+        ],
+        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}! 
+
+Observamos que se trata de un detalle del armado. Para trabar la rueda es necesario presionar el botón que está bajo el manillar. Te dejo el link del manual y un video en donde lo explica: 
+
+Manual (Pag. 10) https://carestino.cc/uploads/manuales_TR001-NG__ar-1752859689.pdf	
+Video (Min. 0:47) https://www.youtube.com/watch?v=G-o_XewA1Q4&t=58s
+
+Quedamos a disposición por cualquier otra duda. ¡Gracias por contactarte!`
+      }
+      
+    ];
+
+    let currentTemplate = templatesData[0];
+
+  // Almacena qué categorías están abiertas
+    const openCategories = new Set([currentTemplate.category]);
+
+    function buildSidebar() {
+      const nav = document.getElementById('nav-list');
+      nav.innerHTML = '';
+      
+      const categories = [...new Set(templatesData.map(t => t.category))];
+
+      categories.forEach(cat => {
+        const isOpen = openCategories.has(cat);
+
+        // Encabezado desplegable
+        const catHeader = document.createElement('li');
+        catHeader.className = `nav-category ${isOpen ? '' : 'collapsed'}`;
+        catHeader.innerHTML = `<span>${cat}</span><span class="arrow">▼</span>`;
+        
+        catHeader.onclick = () => {
+          if (openCategories.has(cat)) {
+            openCategories.delete(cat);
+          } else {
+            openCategories.add(cat);
+          }
+          buildSidebar();
+        };
+        nav.appendChild(catHeader);
+
+        // Contenedor de las plantillas
+        const itemsList = document.createElement('ul');
+        itemsList.className = `category-items ${isOpen ? '' : 'hidden'}`;
+
+        templatesData.filter(t => t.category === cat).forEach(t => {
+          const item = document.createElement('li');
+          item.className = `nav-item ${t.id === currentTemplate.id ? 'active' : ''}`;
+          item.textContent = t.title;
+          item.onclick = (e) => {
+            e.stopPropagation();
+            selectTemplate(t.id);
+          };
+          itemsList.appendChild(item);
+        });
+
+        nav.appendChild(itemsList);
+      });
+    }
+
+    function addRepeatableRow(containerId, prod = '', val = '0') {
+      const list = document.getElementById(containerId);
+      const row = document.createElement('div');
+      row.className = 'repeatable-item';
+      row.innerHTML = `
+        <div class="col-prod">
+          <label>Producto que desea:</label>
+          <input type="text" class="rep-prod" value="${prod}" placeholder="Ej. OSAKA" oninput="updatePreview()">
+        </div>
+        <div class="col-val">
+          <label>Valor producto nuevo:</label>
+          <input type="number" class="rep-val" value="${val}" placeholder="0" oninput="updatePreview()">
+        </div>
+        <button type="button" class="btn-del" onclick="this.parentElement.remove(); updatePreview();">✕</button>
+      `;
+      list.appendChild(row);
+      updatePreview();
+    }
+
+    function loadTemplate(t) {
+      currentTemplate = t;
+      document.getElementById('t-title').textContent = t.title;
+
+      const container = document.getElementById('dynamic-inputs');
+      container.innerHTML = '';
+
+      t.inputs.forEach(inp => {
+        if (inp.type === 'repeatable') {
+          const wrap = document.createElement('div');
+          wrap.className = 'repeatable-box';
+          wrap.innerHTML = `
+            <div id="rep-container-${inp.id}"></div>
+            <button type="button" class="btn-add" onclick="addRepeatableRow('rep-container-${inp.id}')">+ Agregar otro producto</button>
+          `;
+          container.appendChild(wrap);
+
+          setTimeout(() => {
+            (inp.default || [{ prod: '', val: '0' }]).forEach(item => {
+              addRepeatableRow(`rep-container-${inp.id}`, item.prod, item.val);
+            });
+          }, 0);
+          return;
+        }
+
+        const div = document.createElement('div');
+        div.className = 'form-group';
+
+        const label = document.createElement('label');
+        label.textContent = inp.label + ':';
+        label.setAttribute('for', 'field-' + inp.id);
+
+        let inputEl;
+        if (inp.type === 'select') {
+          inputEl = document.createElement('select');
+          inp.options.forEach(opt => {
+            const o = document.createElement('option');
+            o.value = typeof opt === 'object' ? opt.value : opt;
+            o.textContent = typeof opt === 'object' ? opt.label : opt;
+            inputEl.appendChild(o);
+          });
+        } else {
+          inputEl = document.createElement('input');
+          inputEl.type = inp.type === 'number' ? 'number' : 'text';
+          inputEl.value = inp.default || '';
+          if (inp.type === 'readonly') {
+            inputEl.readOnly = true;
+          }
+          inputEl.placeholder = `Ingrese ${inp.label.toLowerCase()}`;
+        }
+
+        inputEl.id = 'field-' + inp.id;
+        inputEl.oninput = updatePreview;
+        inputEl.onchange = updatePreview;
+
+        div.appendChild(label);
+        div.appendChild(inputEl);
+        container.appendChild(div);
+      });
+
+      updatePreview();
+      buildSidebar();
+    }
+
+    function updatePreview() {
+      let rawTotalCambio = 0;
+      let rawDiferencia = 0;
+
+      // Cálculos automáticos y formato visual
+      if (currentTemplate.id === 'cotizacion-cambio') {
+        let sumaNuevos = 0;
+        const container = document.getElementById('rep-container-productosNuevos');
+        if (container) {
+          container.querySelectorAll('.rep-val').forEach(input => {
+            sumaNuevos += parseFloat(input.value) || 0;
+          });
+        }
+
+        const valEnvio = parseFloat(document.getElementById('field-valEnvio')?.value) || 0;
+        const valOriginal = parseFloat(document.getElementById('field-valOriginal')?.value) || 0;
+
+        rawTotalCambio = sumaNuevos + valEnvio;
+        rawDiferencia = rawTotalCambio - valOriginal;
+
+        const elTotalCambio = document.getElementById('field-valTotalCambio');
+        const elDiferencia = document.getElementById('field-valDiferencia');
+
+        if (elTotalCambio) elTotalCambio.value = formatNumber(rawTotalCambio);
+        if (elDiferencia) elDiferencia.value = formatNumber(rawDiferencia);
+      }
+
+      // Extracción de valores para el template
+      const values = {
+        rawTotalCambio,
+        rawDiferencia
+      };
+
+      currentTemplate.inputs.forEach(inp => {
+        if (inp.type === 'repeatable') {
+          const container = document.getElementById(`rep-container-${inp.id}`);
+          if (container) {
+            const prods = container.querySelectorAll('.rep-prod');
+            const vals = container.querySelectorAll('.rep-val');
+            values[inp.id] = [];
+            prods.forEach((p, idx) => {
+              values[inp.id].push({
+                prod: p.value,
+                val: vals[idx] ? vals[idx].value : '0'
+              });
+            });
+          }
+        } else {
+          const el = document.getElementById('field-' + inp.id);
+          if (el) values[inp.id] = el.value;
+        }
+      });
+
+      document.getElementById('preview').value = currentTemplate.template(values);
+    }
+
+    function selectTemplate(id) {
+      const found = templatesData.find(t => t.id === id);
+      if (found) loadTemplate(found);
+    }
+
+    async function copyText() {
+      const copyTextarea = document.getElementById('preview');
+      try {
+        await navigator.clipboard.writeText(copyTextarea.value);
+      } catch {
+        copyTextarea.select();
+        document.execCommand('copy');
+      }
+      const status = document.getElementById('status');
+      status.style.display = 'block';
+      setTimeout(() => status.style.display = 'none', 2000);
+    }
+
+    // Inicio
+    loadTemplate(templatesData[0]);
+  </script>
+</body>
+</html>
