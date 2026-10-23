@@ -232,82 +232,72 @@ Para avanzar, podés acercarte a tu tienda Carestino más cercana, o bien lo ges
       },
    {
         id: "cotizacion-cambio",
-        category: "2. Aprobación y Resolución (Garantías, Cambios y Devoluciones)",
+        category: "2. APROBACIÓN Y RESOLUCIÓN (GARANTÍAS, CAMBIOS Y DEVOLUCIONES)",
         title: "Cotización y Gestión de Cambio",
         inputs: [
           { id: "nombre", label: "Nombre del cliente", type: "text", default: "" },
+          { id: "moneda", label: "Moneda de cobro", type: "select", options: ["$ (Pesos)", "USD (Dólares)"] },
           { 
-            id: "moneda", 
-            label: "Moneda de cobro", 
-            type: "select", 
-            options: [
-              { value: "$", label: "$ (Pesos)" },
-              { value: "₲", label: "₲ (Guaraníes)" },
-              { value: "S/.", label: "S/. (Soles)" }
-            ] 
+            id: "productosOriginales", 
+            label: "Producto que tiene", 
+            type: "repeatable", 
+            default: [{ prod: '', val: '0' }] 
           },
-          { id: "prodOriginal", label: "Producto que tiene", type: "text", default: "" },
-          { id: "valOriginal", label: "Valor producto que tiene", type: "number", default: "0" },
           { 
             id: "productosNuevos", 
-            label: "Productos que desea", 
-            type: "repeatable",
-            default: [{ prod: "", val: "0" }]
+            label: "Producto que desea", 
+            type: "repeatable", 
+            default: [{ prod: '', val: '0' }] 
           },
           { id: "valEnvio", label: "Costo de envío", type: "number", default: "0" },
           { id: "valTotalCambio", label: "Total cambio (Cálculo automático)", type: "readonly", default: "0" },
           { id: "valDiferencia", label: "Diferencia final (Cálculo automático)", type: "readonly", default: "0" },
-          { id: "linkPago", label: "Link de pago (solo si debe abonar)", type: "text", default: "" },
-          { 
-            id: "metodoRetiro", 
-            label: "Método de entrega / retiro", 
-            type: "select", 
-            options: [
-              "que despaches el producto en una agencia cercana",
-              "retirar el producto en tu domicilio"
-            ] 
-          }
+          { id: "linkPago", label: "Link de pago (solo si debe abonar)", type: "text", default: "" }
         ],
         template: (vals) => {
-          const listaNuevos = (vals.productosNuevos || []).map(p => 
-            `${p.prod || '[Producto nuevo]'}: ${vals.moneda} ${formatNumber(p.val)}`
-          ).join('\n');
+          const sym = vals.moneda === "USD (Dólares)" ? "USD " : "$";
+          const originales = vals.productosOriginales || [];
+          const nuevos = vals.productosNuevos || [];
 
-          // Lógica condicional según el saldo
-          let textoDiferencia = "";
-          let conectorEnvio = "Una vez saldado, solicitaremos";
-          const dif = vals.rawDiferencia;
+          const sumaOriginales = originales.reduce((acc, p) => acc + (parseFloat(p.val) || 0), 0);
+          const sumaNuevos = nuevos.reduce((acc, p) => acc + (parseFloat(p.val) || 0), 0);
+          const envio = parseFloat(vals.valEnvio) || 0;
+          const diff = vals.rawDiferencia;
 
-          if (dif > 0) {
-            textoDiferencia = `Esto deja una diferencia a abonar de ${vals.moneda} ${formatNumber(dif)}. Te enviamos el link de pago para saldarla: ${vals.linkPago || '[Link de pago]'}.\n\n`;
-            conectorEnvio = "Una vez saldado, solicitaremos";
-          } else if (dif < 0) {
-            const saldoAFavor = Math.abs(dif);
-            textoDiferencia = `Esto deja una diferencia a tu favor de ${vals.moneda} ${formatNumber(saldoAFavor)}. Te enviaremos una Giftcard por el saldo restante para que puedas utilizar en próximas compras, tanto en nuestra web como en tiendas oficiales.\n\n`;
-            conectorEnvio = "Solicitaremos";
+          let listaOriginales = originales.map(p => `- ${p.prod || '[Producto que tiene]'}: ${sym}${formatNumber(p.val || 0)}`).join('\n');
+          if (!listaOriginales) listaOriginales = `- [Producto que tiene]: ${sym}0`;
+
+          let listaNuevos = nuevos.map(p => `- ${p.prod || '[Producto deseado]'}: ${sym}${formatNumber(p.val || 0)}`).join('\n');
+          if (!listaNuevos) listaNuevos = `- [Producto deseado]: ${sym}0`;
+
+          let resolucion = "";
+          if (diff > 0) {
+            const linkLimpio = vals.linkPago ? vals.linkPago.trim() : '[Link de pago]';
+            resolucion = `Para avanzar con la gestión, te compartimos el enlace para abonar la diferencia:\n${linkLimpio}`;
+          } else if (diff < 0) {
+            resolucion = `Dado que hay una diferencia a tu favor de ${sym}${formatNumber(Math.abs(diff))}, procederemos a gestionar el reintegro de dicho importe por el mismo medio de pago con el que realizaste la compra.`;
           } else {
-            // Si es 0 queda en blanco y no exige saldar
-            textoDiferencia = "";
-            conectorEnvio = "Solicitaremos";
+            resolucion = `No hay diferencia que abonar para este cambio.`;
           }
 
-          return `¡Hola, ${vals.nombre || '[Nombre]'}! 
+          return `¡Hola, ${vals.nombre || '[Nombre]'}!
 
-Es posible gestionar el cambio mientras el producto no tenga uso, te pedimos si nos puedes adjuntar algunas fotos. Lo ideal es ver el frente, la parte trasera y ambos laterales. Si lo tienes en caja, puedes enviarnos una foto por fuera y otra con la tapa abierta.
+Revisamos tu solicitud y te acercamos el detalle para realizar el cambio:
 
-Te compartimos el detalle para gestionar tu cambio:
+Productos a entregar:
+${listaOriginales}
+Total a favor: ${sym}${formatNumber(sumaOriginales)}
 
-Cuentas con: 
-${vals.prodOriginal || '[Producto original]'}: ${vals.moneda} ${formatNumber(vals.valOriginal)}
-
-Deseas: 
+Productos seleccionados:
 ${listaNuevos}
-Costo de envío: ${vals.moneda} ${formatNumber(vals.valEnvio)}
-Total cambio: ${vals.moneda} ${formatNumber(vals.rawTotalCambio)}
+Subtotal: ${sym}${formatNumber(sumaNuevos)}
+Costo de envío: ${sym}${formatNumber(envio)}
 
-${textoDiferencia}${conectorEnvio} las etiquetas para ${vals.metodoRetiro}. Cuando regrese a nuestro depósito (demora de 2 a 10 días hábiles), te enviaremos el nuevo. 
+Diferencia final: ${sym}${formatNumber(diff)}
 
-¡Aguardamos tu confirmación!`;
+${resolucion}
+
+¡Quedamos a disposición por cualquier consulta!`;
         }
       },
 // SECCIÓN 3
@@ -882,19 +872,26 @@ Quedamos a disposición por cualquier otra duda. ¡Gracias por contactarte!`
 
       // Cálculos automáticos y formato visual
       if (currentTemplate.id === 'cotizacion-cambio') {
+        let sumaOriginales = 0;
+        const cOriginales = document.getElementById('rep-container-productosOriginales');
+        if (cOriginales) {
+          cOriginales.querySelectorAll('.rep-val').forEach(input => {
+            sumaOriginales += parseFloat(input.value) || 0;
+          });
+        }
+
         let sumaNuevos = 0;
-        const container = document.getElementById('rep-container-productosNuevos');
-        if (container) {
-          container.querySelectorAll('.rep-val').forEach(input => {
+        const cNuevos = document.getElementById('rep-container-productosNuevos');
+        if (cNuevos) {
+          cNuevos.querySelectorAll('.rep-val').forEach(input => {
             sumaNuevos += parseFloat(input.value) || 0;
           });
         }
 
         const valEnvio = parseFloat(document.getElementById('field-valEnvio')?.value) || 0;
-        const valOriginal = parseFloat(document.getElementById('field-valOriginal')?.value) || 0;
 
         rawTotalCambio = sumaNuevos + valEnvio;
-        rawDiferencia = rawTotalCambio - valOriginal;
+        rawDiferencia = rawTotalCambio - sumaOriginales;
 
         const elTotalCambio = document.getElementById('field-valTotalCambio');
         const elDiferencia = document.getElementById('field-valDiferencia');
