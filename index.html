@@ -337,16 +337,22 @@ ${resolucion}
             label: "Acción logística a realizar", 
             type: "select", 
             options: [
-              { value: "entrega", label: "Solo Entrega" },
               { value: "cambio", label: "Cambio mano a mano" },
+              { value: "entrega", label: "Solo Entrega" },
               { value: "retiro", label: "Solo Retiro" }
             ] 
           },
           { 
-            id: "itemDetalle", 
-            label: "Producto o Repuesto (para Entrega o Mano a Mano)", 
+            id: "itemRetiro", 
+            label: "Producto o Repuesto a retirar (Mano a Mano o Solo Retiro)", 
             type: "text", 
-            placeholder: "Ej. Cochecito Beverly / Rueda delantera" 
+            placeholder: "Ej. Cochecito Beverly / Rueda delantera fallada" 
+          },
+          { 
+            id: "itemEntrega", 
+            label: "Producto o Repuesto a entregar (Mano a Mano o Solo Entrega)", 
+            type: "text", 
+            placeholder: "Ej. Cochecito Beverly nuevo / Rueda delantera de repuesto" 
           },
           { 
             id: "rolTercero", 
@@ -366,14 +372,15 @@ ${resolucion}
         ],
         template: (vals) => {
           let bloqueAccion = "";
-          const item = vals.itemDetalle || '[Producto/Repuesto]';
+          const itemRetiro = vals.itemRetiro || '[Producto/Repuesto a retirar]';
+          const itemEntrega = vals.itemEntrega || '[Producto/Repuesto a entregar]';
 
-          if (vals.modoLogistica === "entrega") {
-            bloqueAccion = `Te estaremos entregando un nuevo ${item}.`;
-          } else if (vals.modoLogistica === "cambio") {
-            bloqueAccion = `Haremos el retiro de ${item} y te entregaremos el nuevo. Te pedimos tenerlo listo y embalado.`;
+          if (vals.modoLogistica === "cambio") {
+            bloqueAccion = `Haremos el retiro de ${itemRetiro} y te entregaremos el nuevo ${itemEntrega}. Te pedimos tenerlo listo y embalado.`;
+          } else if (vals.modoLogistica === "entrega") {
+            bloqueAccion = `Te estaremos entregando un nuevo ${itemEntrega}.`;
           } else if (vals.modoLogistica === "retiro") {
-            bloqueAccion = `Pasaremos a retirar el producto. Te pedimos que lo tengas en su caja listo para entregar. Una vez retirado, gestionaremos la devolución del pago.`;
+            bloqueAccion = `Pasaremos a retirar ${itemRetiro}. Te pedimos que lo tengas en su caja listo para entregar. Una vez retirado, gestionaremos la devolución del pago.`;
           }
 
           return `¡Hola, ${vals.nombre || '[Nombre]'}! 
