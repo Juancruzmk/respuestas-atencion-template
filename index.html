@@ -411,35 +411,18 @@ Vas a poder seguir el estado del envío desde el portal de nuestra web. El plazo
 
 Quedamos a disposición. ¡Gracias por contactarte!`
       },
-      {
+{
         id: "devolucion-costo-envio",
-        category: "3. Logística, Retiros y Envíos",
+        category: "3. LOGÍSTICA, RETIROS Y ENVÍOS",
         title: "Devolución con Costo de Envío",
         inputs: [
           { id: "nombre", label: "Nombre del cliente", type: "text", default: "" },
-          { 
-            id: "moneda", 
-            label: "Moneda", 
-            type: "select", 
-            options: [
-              { value: "$", label: "$ (Pesos)" },
-              { value: "₲", label: "₲ (Guaraníes)" },
-              { value: "S/.", label: "S/. (Soles)" }
-            ] 
-          },
-          { id: "montoEnvio", label: "Monto total del envío", type: "number", default: "0" },
+          { id: "moneda", label: "Moneda", type: "select", options: ["$ (Pesos)", "USD (Dólares)"] },
+          { id: "montoEnvio", label: "Monto total del envío", type: "number", default: 0 },
           { id: "linkPago", label: "Link de pago", type: "text", default: "" },
+          { id: "zonaGestion", label: "Zona de gestión", type: "select", options: ["Interior", "CABA / GBA"] },
           { 
-            id: "zona", 
-            label: "Zona de gestión", 
-            type: "select", 
-            options: [
-              { value: "interior", label: "Interior" },
-              { value: "amba", label: "AMBA" }
-            ] 
-          },
-          { 
-            id: "metodoInterior", 
+            id: "metodoEnvio", 
             label: "Método de envío (Solo si es Interior)", 
             type: "select", 
             options: [
@@ -449,22 +432,27 @@ Quedamos a disposición. ¡Gracias por contactarte!`
           }
         ],
         template: (vals) => {
-          let bloqueLogistica = "";
+          const sym = vals.moneda === "USD (Dólares)" ? "USD " : "$";
+          const link = vals.linkPago ? vals.linkPago.trim() : '[Link de pago]';
 
-          if (vals.zona === "interior") {
-            bloqueLogistica = `Una vez saldado, solicitaremos las etiquetas para ${vals.metodoInterior}. Cuando regrese a nuestro depósito (demora de 2 a 10 días hábiles), gestionaremos el reintegro del pago.`;
+          let textoLogistica = "";
+          if (vals.zonaGestion === "Interior") {
+            textoLogistica = `Una vez abonado el costo de envío, te estaremos facilitando las etiquetas de logística para ${vals.metodoEnvio}. En cuanto las tengamos te las enviamos por acá para que las pegues en la caja.`;
           } else {
-            bloqueLogistica = `Una vez saldado, solicitaremos el retiro del producto, cuando regrese a nuestro depósito, gestionaremos el reintegro del pago.`;
+            textoLogistica = `Una vez abonado el costo de envío, coordinaremos la visita de nuestra camioneta a tu domicilio para realizar el retiro.`;
           }
 
-          return `¡Hola, ${vals.nombre || '[Nombre]'}! 
+          return `¡Hola, ${vals.nombre || '[Nombre]'}!
 Muchas gracias por enviarnos las imágenes. Las revisamos y te informamos que se aprobó la gestión de Devolución.
 
-Tiene un costo de envío de ${vals.moneda} ${formatNumber(vals.montoEnvio)}. Te enviamos el link de pago para saldarla: ${vals.linkPago || '[Link de pago]'}.
+Tiene un costo de envío de ${sym} ${formatNumber(vals.montoEnvio || 0)}. Te enviamos el link de pago para saldarla:
+${link}
 
-${bloqueLogistica}
+${textoLogistica}
 
-¡Aguardamos tu confirmación!`;
+Una vez que el producto arribe a nuestro depósito (demora de 2 a 10 días hábiles), continuaremos con la devolución de tu dinero.
+
+¡Estamos en contacto!`;
         }
       },
       {
