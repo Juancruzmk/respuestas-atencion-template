@@ -87,6 +87,17 @@
 
     /* Campos Repetibles */
     .repeatable-box { border: 1px dashed #cbd5e1; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #fdfdfd; }
+	  .repeatable-box.box-originales {
+      background-color: #fefce8;
+      border: 1px solid #fef08a;
+      border-left: 4px solid #eab308;
+    }
+
+    .repeatable-box.box-nuevos {
+      background-color: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-left: 4px solid #22c55e;
+    }
     .repeatable-item { display: flex; gap: 0.5rem; align-items: flex-end; margin-bottom: 0.75rem; }
     .repeatable-item:last-child { margin-bottom: 0; }
     .col-prod { flex: 2; }
@@ -809,9 +820,12 @@ Quedamos a disposición por cualquier otra duda. ¡Gracias por contactarte!`
       container.innerHTML = '';
 
       t.inputs.forEach(inp => {
-        if (inp.type === 'repeatable') {
+       if (inp.type === 'repeatable') {
           const wrap = document.createElement('div');
-          wrap.className = 'repeatable-box';
+          
+          // Asigna la clase de color según el tipo de producto
+          const colorClass = inp.id === 'productosOriginales' ? 'box-originales' : 'box-nuevos';
+          wrap.className = `repeatable-box ${colorClass}`;
           
           const btnTexto = inp.id === 'productosOriginales' 
             ? '+ Agregar otro producto a entregar' 
