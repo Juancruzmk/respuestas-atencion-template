@@ -505,6 +505,7 @@ Tan pronto tengamos confirmación del retorno, gestionaremos la devolución del 
 ¡Estamos en contacto!`
       },
       {
+       {
         id: "envio-etiquetas",
         category: "3. Logística, Retiros y Envíos",
         title: "Envío de Etiquetas",
@@ -514,7 +515,7 @@ Tan pronto tengamos confirmación del retorno, gestionaremos la devolución del 
             id: "tipoGestion", 
             label: "Tipo de gestión", 
             type: "select", 
-            options: ["Cambio", "Garantía"] 
+            options: ["Cambio", "Garantía", "Devolución"] 
           },
           { 
             id: "metodoEntrega", 
@@ -533,7 +534,7 @@ Tan pronto tengamos confirmación del retorno, gestionaremos la devolución del 
           },
           { 
             id: "accionNuevoEnvio", 
-            label: "Acción para el nuevo envío", 
+            label: "Acción para el nuevo envío (Solo si es Cambio/Garantía)", 
             type: "select", 
             options: [
               "enviaremos el nuevo producto",
@@ -541,15 +542,25 @@ Tan pronto tengamos confirmación del retorno, gestionaremos la devolución del 
             ] 
           }
         ],
-        template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}! 
+        template: (vals) => {
+          let accionFinal = "";
+
+          if (vals.tipoGestion === "Devolución") {
+            accionFinal = "aguardaremos que llegue a nuestro depósito (demora de 2 a 10 días hábiles), para gestionar la devolución del producto";
+          } else {
+            accionFinal = vals.accionNuevoEnvio;
+          }
+
+          return `¡Hola, ${vals.nombre || '[Nombre]'}! 
 
 Muchas gracias por enviarnos las imágenes. Las revisamos y te informamos que se aprobó la gestión de ${vals.tipoGestion}.
 
 Te confirmamos que ya solicitamos el retorno de tu producto. En breve nos estarán facilitando las etiquetas de logística para ${vals.metodoEntrega}; en cuanto las tengamos te las enviamos por acá para que las pegues en la caja. 
 
-Una vez sea ${vals.estadoRetorno}, ${vals.accionNuevoEnvio}.
+Una vez sea ${vals.estadoRetorno}, ${accionFinal}.
 
-¡Estamos en contacto!`
+¡Estamos en contacto!`;
+        }
       },
       {
         id: "envio-incompleto",
