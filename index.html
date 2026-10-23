@@ -606,24 +606,24 @@ Te confirmamos que la devolución de tu dinero ya fue procesada. La vas a ver re
 
 Esperamos haberte ayudado. Quedamos a disposición. ¡Gracias por contactarte!`
       },
-      {
+     {
         id: "cupon-compensacion",
-        category: "4. Cierres, Facturación y Administrativos",
+        category: "4. CIERRES, FACTURACIÓN Y ADMINISTRATIVOS",
         title: "Cupón de Compensación (Postventa)",
         inputs: [
           { id: "nombre", label: "Nombre del cliente", type: "text", default: "" },
-          { id: "motivo", label: "Motivo del inconveniente", type: "text", placeholder: "Ej. la demora en la entrega / el detalle de pintura" },
-          { id: "codigoCupon", label: "Código de cupón", type: "text", placeholder: "Ej. CARE15OFF" },
+          { id: "motivo", label: "Motivo del inconveniente", type: "text", default: "" },
+          { id: "codigoCupon", label: "Código de cupón", type: "text", default: "" },
           { 
-            id: "porcentaje", 
+            id: "descuento", 
             label: "Porcentaje de descuento", 
             type: "select", 
-            options: ["5", "10", "15", "20", "30"] 
+            options: ["5", "10", "15", "20", "25", "30"] 
           }
         ],
         template: (vals) => `¡Hola, ${vals.nombre || '[Nombre]'}!
 
-Queremos agradecerte por contarnos tu experiencia, ya que nos ayuda a seguir mejorando. A modo de disculpas por los inconvenientes relacionados con ${vals.motivo || '[Motivo]'}, te acercamos este cupón de descuento ${vals.codigoCupon || '[código]'} por %${vals.porcentaje}. Esperamos que te sea de mucha utilidad en tu próxima compra.
+Queremos agradecerte por contarnos tu experiencia, ya que nos ayuda a seguir mejorando. A modo de disculpas por los inconvenientes relacionados con ${vals.motivo || '[Motivo]'}, te acercamos este cupón de descuento [${vals.codigoCupon || 'código'}] por ${vals.descuento || '5'}%. Esperamos que te sea de mucha utilidad en tu próxima compra.
 
 Quedamos a disposición. ¡Gracias por elegirnos!`
       },
