@@ -784,22 +784,33 @@ Quedamos a disposición por cualquier otra duda. ¡Gracias por contactarte!`
     }
 
     function addRepeatableRow(containerId, prod = '', val = '0') {
-      const list = document.getElementById(containerId);
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      // Define las etiquetas según qué sección sea
+      const isOriginal = containerId.includes('productosOriginales');
+      const labelProd = isOriginal ? 'Producto que tiene:' : 'Producto que desea:';
+      const labelVal = isOriginal ? 'Valor producto que tiene:' : 'Valor producto nuevo:';
+      const placeholderProd = isOriginal ? 'Ej. Coche / Silla actual' : 'Ej. OSAKA';
+
       const row = document.createElement('div');
-      row.className = 'repeatable-item';
+      row.className = 'repeatable-row';
       row.innerHTML = `
-        <div class="col-prod">
-          <label>Producto que desea:</label>
-          <input type="text" class="rep-prod" value="${prod}" placeholder="Ej. OSAKA" oninput="updatePreview()">
+        <div style="flex: 2;">
+          <small style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; font-weight:600;">${labelProd}</small>
+          <input type="text" class="rep-prod" placeholder="${placeholderProd}" value="${prod}">
         </div>
-        <div class="col-val">
-          <label>Valor producto nuevo:</label>
-          <input type="number" class="rep-val" value="${val}" placeholder="0" oninput="updatePreview()">
+        <div style="flex: 1;">
+          <small style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; font-weight:600;">${labelVal}</small>
+          <input type="number" class="rep-val" value="${val}">
         </div>
-        <button type="button" class="btn-del" onclick="this.parentElement.remove(); updatePreview();">✕</button>
+        <button type="button" class="btn-remove" title="Eliminar" onclick="removeRepeatableRow(this)">&times;</button>
       `;
-      list.appendChild(row);
-      updatePreview();
+
+      row.querySelector('.rep-prod').oninput = updatePreview;
+      row.querySelector('.rep-val').oninput = updatePreview;
+
+      container.appendChild(row);
     }
 
     function loadTemplate(t) {
@@ -813,9 +824,14 @@ Quedamos a disposición por cualquier otra duda. ¡Gracias por contactarte!`
         if (inp.type === 'repeatable') {
           const wrap = document.createElement('div');
           wrap.className = 'repeatable-box';
+          
+          const btnTexto = inp.id === 'productosOriginales' 
+            ? '+ Agregar otro producto a entregar' 
+            : '+ Agregar otro producto que desea';
+
           wrap.innerHTML = `
             <div id="rep-container-${inp.id}"></div>
-            <button type="button" class="btn-add" onclick="addRepeatableRow('rep-container-${inp.id}')">+ Agregar otro producto</button>
+            <button type="button" class="btn-add" onclick="addRepeatableRow('rep-container-${inp.id}')">${btnTexto}</button>
           `;
           container.appendChild(wrap);
 
