@@ -786,30 +786,45 @@ Quedamos a disposición por cualquier otra duda. ¡Gracias por contactarte!`
       const container = document.getElementById(containerId);
       if (!container) return;
 
-      // Define las etiquetas según qué sección sea
       const isOriginal = containerId.includes('productosOriginales');
       const labelProd = isOriginal ? 'Producto que tiene:' : 'Producto que desea:';
       const labelVal = isOriginal ? 'Valor producto que tiene:' : 'Valor producto nuevo:';
       const placeholderProd = isOriginal ? 'Ej. Coche / Silla actual' : 'Ej. OSAKA';
 
       const row = document.createElement('div');
-      row.className = 'repeatable-row';
+      row.className = 'repeatable-item'; // Usa la clase que ya tienes definida con flex en tu CSS
+      row.style.display = 'flex';
+      row.style.gap = '0.5rem';
+      row.style.alignItems = 'flex-end';
+      row.style.marginBottom = '0.75rem';
+
       row.innerHTML = `
         <div style="flex: 2;">
-          <small style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; font-weight:600;">${labelProd}</small>
-          <input type="text" class="rep-prod" placeholder="${placeholderProd}" value="${prod}">
+          <small style="display:block; font-size:0.75rem; color:#475569; margin-bottom:4px; font-weight:600;">${labelProd}</small>
+          <input type="text" class="rep-prod" placeholder="${placeholderProd}" value="${prod}" style="width:100%;">
         </div>
         <div style="flex: 1;">
-          <small style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; font-weight:600;">${labelVal}</small>
-          <input type="number" class="rep-val" value="${val}">
+          <small style="display:block; font-size:0.75rem; color:#475569; margin-bottom:4px; font-weight:600;">${labelVal}</small>
+          <input type="number" class="rep-val" value="${val}" style="width:100%;">
         </div>
-        <button type="button" class="btn-remove" title="Eliminar" onclick="removeRepeatableRow(this)">&times;</button>
+        <button type="button" class="btn-remove" title="Eliminar fila" onclick="removeRepeatableRow(this)" style="background:#ef4444; color:#fff; border:none; border-radius:4px; width:34px; height:38px; cursor:pointer; font-weight:bold; font-size:1rem; display:flex; align-items:center; justify-content:center; margin-bottom:2px;">&times;</button>
       `;
 
       row.querySelector('.rep-prod').oninput = updatePreview;
       row.querySelector('.rep-val').oninput = updatePreview;
 
       container.appendChild(row);
+    }
+
+    function removeRepeatableRow(btn) {
+      const row = btn.closest('.repeatable-item') || btn.parentElement;
+      const container = row.parentElement;
+
+      // Permite eliminar solo si queda más de una fila en la sección
+      if (container.children.length > 1) {
+        row.remove();
+        updatePreview();
+      }
     }
 
     function loadTemplate(t) {
